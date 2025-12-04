@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>EduStatic Zoo - Explore the Animals!</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://esm.sh/three@0.160.0",
+          "three/": "https://esm.sh/three@0.160.0/"
+        }
+      }
+    </script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
+        background: linear-gradient(to bottom, #87CEEB 0%, #FFE5B4 100%);
+        touch-action: none;
+      }
+
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* UI Overlay */
+      #ui-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      /* Welcome message */
+      #welcome-message {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 15px 30px;
+        border-radius: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        pointer-events: auto;
+        animation: slideDown 0.5s ease-out;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      #welcome-message h1 {
+        font-size: 32px;
+        color: #FF6B9D;
+        margin-bottom: 8px;
+        text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.5);
+      }
+
+      #welcome-message p {
+        font-size: 18px;
+        color: #6B4EA3;
+        margin: 5px 0;
+      }
+
+      /* Animal info display */
+      #animal-info {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.95);
+        padding: 20px 40px;
+        border-radius: 25px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        text-align: center;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        max-width: 90%;
+      }
+
+      #animal-info.visible {
+        opacity: 1;
+      }
+
+      #animal-info h2 {
+        font-size: 36px;
+        color: #FF6B9D;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.5);
+      }
+
+      #animal-info p {
+        font-size: 20px;
+        color: #4A4A4A;
+        line-height: 1.4;
+      }
+
+      #animal-info em {
+        font-size: 16px;
+        color: #FF69B4;
+        display: block;
+        margin-top: 8px;
+        font-style: normal;
+      }
+
+      /* Desktop controls hint */
+      #controls-hint {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 15px 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        font-size: 16px;
+        color: #6B4EA3;
+        pointer-events: none;
+      }
+
+      #controls-hint strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 18px;
+        color: #FF6B9D;
+      }
+
+      /* Loading screen */
+      #loading-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, #87CEEB 0%, #FFE5B4 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        transition: opacity 0.5s ease;
+      }
+
+      #loading-screen.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #loading-screen h2 {
+        font-size: 48px;
+        color: #FF6B9D;
+        margin-bottom: 20px;
+        text-shadow: 3px 3px 0 rgba(255, 255, 255, 0.5);
+      }
+
+      .spinner {
+        width: 60px;
+        height: 60px;
+        border: 6px solid rgba(255, 107, 157, 0.3);
+        border-top: 6px solid #FF6B9D;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Responsive adjustments */
+      @media (max-width: 768px) {
+        #welcome-message h1 {
+          font-size: 24px;
+        }
+        
+        #welcome-message p {
+          font-size: 14px;
+        }
+        
+        #animal-info h2 {
+          font-size: 28px;
+        }
+        
+        #animal-info p {
+          font-size: 16px;
+        }
+        
+        #controls-hint {
+          display: none;
+        }
+      }
+
+      /* Hide mobile controls hint on desktop */
+      @media (min-width: 769px) {
+        #mobile-hint {
+          display: none;
+        }
+      }
+
+      /* Sound toggle button */
+      #sound-toggle {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 3px solid #FF6B9D;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+        cursor: pointer;
+        pointer-events: auto;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      #sound-toggle:hover {
+        background: #FF6B9D;
+        transform: scale(1.1);
+      }
+
+      #sound-toggle.muted {
+        background: rgba(200, 200, 200, 0.9);
+        border-color: #999;
+      }
+
+      /* Hide minimap completely */
+      #minimap,
+      .minimap,
+      #minimap-container,
+      .minimap-container {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="canvas-container"></div>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay">
+      <!-- Sound Toggle Button -->
+      <button id="sound-toggle" title="Toggle ambient sounds">🔊</button>
+      
+      <!-- Welcome Message -->
+      <div id="welcome-message">
+        <h1>🎪 Welcome to EduStatic Zoo! 🎪</h1>
+        <p>Explore 4 themed areas with 12 adorable animated animals!</p>
+        <p>Start at the grand entrance and follow the paths! 🎈✨</p>
+      </div>
+
+      <!-- Animal Info Display -->
+      <div id="animal-info">
+        <h2 id="animal-name"></h2>
+        <p id="animal-description"></p>
+      </div>
+
+      <!-- Desktop Controls Hint -->
+      <div id="controls-hint">
+        <strong>Controls:</strong>
+        WASD or Arrow Keys to move<br>
+        Mouse drag to rotate camera
+      </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <h2>Loading Zoo...</h2>
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Game Scripts -->
+    <script type="module" src="main.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/ChatManager.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/ImageGenerator.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/ProgressLogger.js"></script>
+    <script src="https://storage.googleapis.com/rosebud_staticfiles/OGP.js"></script>
+  </body>
+</html>
